@@ -12,6 +12,8 @@
 
 > **This repository is a portfolio case study, not a source mirror.** The implementation is private. See [Ownership](#ownership).
 
+📸 **[Browse the screenshots](#screenshots)** · 🖥️ **[Open the demo page](https://ulasmango-cmd.github.io/localcanvas-ai/)**
+
 ---
 
 ## The idea
@@ -49,6 +51,72 @@ Being direct about this is deliberate. This page describes what exists, not what
 | **The photo editor** | **Not started — Phase 4** |
 | **OCRed, editable text inside images** | **Not started — Phase 5** |
 | **Object removal** | **Blocked — see below** |
+
+---
+
+## Screenshots
+
+Every image below is a real page from the running application, captured by a
+scripted browser session against a real Docker stack — not a mockup. The session
+is established by authenticating against the API, and the asset thumbnails are
+streamed from the object store through presigned URLs, so what you are looking at
+is the product serving its own data.
+
+### The product
+
+**The landing page.** The privacy claim is the headline, not a footnote.
+
+![Landing page](screenshots/01-landing.png)
+
+**Projects.** Two projects, each showing asset and revision counts.
+
+![Project index](screenshots/06-projects.png)
+
+**Project detail — the heart of Phase 3.** Five real PNG files that were uploaded
+through the presigned direct-upload path: the API minted the URL, the browser put
+the bytes straight into object storage, then the API read them back and identified
+the format from the bytes themselves. Note the dimensions under each thumbnail
+(`360 × 640`, `512 × 512`, `720 × 360`) — those were parsed out of the PNG
+headers server-side, not supplied by the client.
+
+![Project detail with assets](screenshots/07-project-detail.png)
+
+**Members.** All eight roles, with role changes enforced server-side.
+
+![Members](screenshots/08-members.png)
+
+### The honest one
+
+**Installation health.** This is the screenshot worth reading carefully. It reports
+live latencies for each dependency it can reach, and just as plainly reports the
+two it cannot: the local model host and the AI worker are `Not configured`, and
+the overall state is `Running with reduced capability`.
+
+An application that audits its own honesty in public is more persuasive than one
+that shows only green ticks. This page is why the "not started" rows in the status
+table can be believed.
+
+![Status page](screenshots/04-status.png)
+
+<details>
+<summary><strong>Sign-in and registration</strong></summary>
+
+<br>
+
+![Sign in](screenshots/02-login.png)
+
+![Register](screenshots/03-register.png)
+
+</details>
+
+<details>
+<summary><strong>Workspace dashboard</strong></summary>
+
+<br>
+
+![Dashboard](screenshots/05-dashboard.png)
+
+</details>
 
 ---
 
@@ -195,6 +263,24 @@ Real limitations, stated plainly:
 Built by **Altin** ([@ulasmango-cmd](https://github.com/ulasmango-cmd)).
 
 - GitHub profile: [github.com/ulasmango-cmd](https://github.com/ulasmango-cmd)
+- Demo page: [ulasmango-cmd.github.io/localcanvas-ai](https://ulasmango-cmd.github.io/localcanvas-ai/)
+
+---
+
+## About this repository
+
+This repository contains three things: this case study, a self-contained demo
+page, and product screenshots.
+
+| Path | What it is |
+| :--- | :--- |
+| `README.md` | This case study |
+| `index.html` | A single-file demo page, no build step and no dependencies |
+| `screenshots/` | Real captures of the running application, with `MANIFEST.md` mapping each file to the route it shows |
+
+The screenshots are produced by a scripted browser session in the private source
+repository, authenticated against the API, so they can be regenerated whenever the
+interface changes rather than drifting out of date.
 
 ---
 

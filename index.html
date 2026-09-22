@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LocalCanvas AI — a self-hosted AI photo editor</title>
+<meta name="description" content="A privacy-first, self-hosted AI photo editor. Edit images, rewrite the text inside them, and run a client workflow — with the AI on your own hardware.">
+<meta property="og:title" content="LocalCanvas AI — a self-hosted AI photo editor">
+<meta property="og:description" content="Edit images, rewrite the text inside them, and run a client workflow. The AI runs on your own hardware.">
+<meta property="og:image" content="screenshots/01-landing.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖼️</text></svg>">
+
+<style>
+  /* ---------------------------------------------------------------------
+     A single self-contained page. No build step, no CDN, no framework —
+     it has to still work in five years when the tooling has moved on.
+     --------------------------------------------------------------------- */
+
+  :root {
+    --bg:          #08090c;
+    --bg-raised:   #0e1016;
+    --bg-sunken:   #050608;
+    --border:      #1e212b;
+    --border-hi:   #2c313f;
+    --fg:          #e8eaf0;
+    --fg-muted:    #949aa8;
+    --fg-faint:    #636a7a;
+    --accent:      #6f8cff;
+    --accent-soft: #1a2140;
+    --warn:        #e0a33c;
+    --warn-soft:   #2a2113;
+    --ok:          #46b17b;
+    --ok-soft:     #122a1e;
+    --radius:      14px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  [data-theme="light"] {
+    --bg:          #fbfbfd;
+    --bg-raised:   #ffffff;
+    --bg-sunken:   #f2f3f7;
+    --border:      #e2e4ea;
+    --border-hi:   #cdd1db;
+    --fg:          #14161c;
+    --fg-muted:    #5c6273;
+    --fg-faint:    #878d9c;
+    --accent:      #3b57d6;
+    --accent-soft: #eaeefc;
+    --warn:        #9a6b12;
+    --warn-soft:   #fdf6e6;
+    --ok:          #1f7a4d;
+    --ok-soft:     #e8f6ee;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* --- Header ---------------------------------------------------------- */
+
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; height: 62px;
+  }
+
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.01em; }
+
+  .brand .mark {
+    width: 26px; height: 26px; border-radius: 7px; flex: none;
+    background: linear-gradient(135deg, var(--accent), #b06ff5 55%, #ff7ab8);
+  }
+
+  .bar nav { display: flex; align-items: center; gap: 6px; }
+
+  .bar nav a {
+    color: var(--fg-muted); text-decoration: none; font-size: 14px;
+    padding: 7px 11px; border-radius: 8px;
+    transition: color .15s, background .15s;
+  }
+
+  .bar nav a:hover { color: var(--fg); background: var(--bg-raised); }
+
+  .theme-toggle {
+    background: var(--bg-raised); color: var(--fg-muted);
+    border: 1px solid var(--border); border-radius: 9px;
+    width: 34px; height: 34px; cursor: pointer; font-size: 15px;
+    display: grid; place-items: center;
+    transition: color .15s, border-color .15s;
+  }
+
+  .theme-toggle:hover { color: var(--fg); border-color: var(--border-hi); }
+
+  /* --- Hero ------------------------------------------------------------ */
+
+  .hero { padding: 84px 0 64px; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg-raised); border: 1px solid var(--border);
+    color: var(--fg-muted); font-size: 13px;
+    padding: 6px 13px; border-radius: 999px; margin-bottom: 26px;
+  }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+
+  h1 {
+    font-size: clamp(32px, 5.2vw, 56px);
+    line-height: 1.08; letter-spacing: -0.032em;
+    margin: 0 0 22px; font-weight: 680;
+    max-width: 17ch;
+  }
+
+  .lede {
+    font-size: clamp(16px, 1.9vw, 19px);
+    color: var(--fg-muted); max-width: 62ch; margin: 0 0 34px;
+  }
+
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 11px 20px; border-radius: 10px;
+    font-size: 15px; font-weight: 550; text-decoration: none;
+    border: 1px solid transparent; cursor: pointer;
+    transition: transform .12s, background .15s, border-color .15s;
+  }
+
+  .btn:active { transform: translateY(1px); }
+
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
+
+  .btn-ghost {
+    background: var(--bg-raised); color: var(--fg); border-color: var(--border);
+  }
+
+  .btn-ghost:hover { border-color: var(--border-hi); }
+
+  /* --- The honesty banner ---------------------------------------------- */
+
+  .banner {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: var(--warn-soft);
+    border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
+    border-radius: var(--radius);
+    padding: 18px 20px; margin: 0 0 56px;
+  }
+
+  .banner .icon { font-size: 19px; line-height: 1.4; flex: none; }
+  .banner p { margin: 0; font-size: 14.5px; color: var(--fg); }
+  .banner strong { color: var(--warn); }
+
+  /* --- Sections -------------------------------------------------------- */
+
+  section { padding: 56px 0; border-top: 1px solid var(--border); }
+
+  .eyebrow {
+    font-size: 12px; font-weight: 640; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 12px;
+  }
+
+  h2 {
+    font-size: clamp(23px, 3vw, 32px); letter-spacing: -0.022em;
+    margin: 0 0 16px; font-weight: 640; line-height: 1.2;
+  }
+
+  h3 { font-size: 17px; margin: 0 0 8px; font-weight: 620; letter-spacing: -0.01em; }
+
+  section > .wrap > p, .prose p { color: var(--fg-muted); max-width: 68ch; }
+
+  .prose p + p { margin-top: 14px; }
+
+  strong { color: var(--fg); font-weight: 620; }
+
+  a.inline { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+  a.inline:hover { border-bottom-color: var(--accent); }
+
+  code {
+    font-family: var(--mono); font-size: 0.875em;
+    background: var(--bg-sunken); border: 1px solid var(--border);
+    padding: 1.5px 6px; border-radius: 6px;
+    color: var(--fg);
+  }
+
+  /* --- Status table ---------------------------------------------------- */
+
+  .table-scroll { overflow-x: auto; margin-top: 26px; border: 1px solid var(--border); border-radius: var(--radius); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 480px; }
+
+  th {
+    text-align: left; font-weight: 600; font-size: 12px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-faint);
+    padding: 13px 18px; background: var(--bg-raised);
+    border-bottom: 1px solid var(--border);
+  }
+
+  td { padding: 13px 18px; border-bottom: 1px solid var(--border); color: var(--fg-muted); vertical-align: top; }
+
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--fg); }
+
+  .tag {
+    display: inline-block; font-size: 12px; font-weight: 560;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  }
+
+  .tag-ok   { background: var(--ok-soft);   color: var(--ok); }
+  .tag-warn { background: var(--warn-soft); color: var(--warn); }
+  .tag-none { background: var(--bg-sunken); color: var(--fg-faint); }
+
+  /* --- Figures --------------------------------------------------------- */
+
+  figure { margin: 30px 0 0; }
+
+  .shot {
+    display: block; width: 100%; height: auto;
+    border: 1px solid var(--border-hi); border-radius: var(--radius);
+    background: var(--bg-sunken);
+    box-shadow: 0 22px 48px -22px rgba(0,0,0,.7);
+    cursor: zoom-in;
+  }
+
+  [data-theme="light"] .shot { box-shadow: 0 18px 40px -24px rgba(20,22,28,.26); }
+
+  figcaption {
+    margin-top: 12px; font-size: 14px; color: var(--fg-faint);
+    max-width: 72ch;
+  }
+
+  figcaption strong { color: var(--fg-muted); }
+
+  .grid-2 { display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+  /* --- Feature cards --------------------------------------------------- */
+
+  .cards {
+    display: grid; gap: 16px; margin-top: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
+  }
+
+  .card {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+  }
+
+  .card p { margin: 0; font-size: 14.5px; color: var(--fg-muted); }
+  .card .num { font-family: var(--mono); font-size: 12px; color: var(--accent); display: block; margin-bottom: 10px; }
+
+  /* --- Mermaid --------------------------------------------------------- */
+
+  .diagram {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 26px; margin-top: 26px;
+    overflow-x: auto;
+  }
+
+  /* --- Lightbox -------------------------------------------------------- */
+
+  dialog.lightbox {
+    border: none; background: transparent; padding: 0;
+    max-width: 96vw; max-height: 96vh; overflow: visible;
+  }
+
+  dialog.lightbox::backdrop { background: rgba(0,0,0,.86); backdrop-filter: blur(4px); }
+
+  dialog.lightbox img {
+    max-width: 96vw; max-height: 92vh; width: auto;
+    border-radius: 10px; border: 1px solid var(--border-hi); display: block;
+  }
+
+  dialog.lightbox button {
+    position: absolute; top: -14px; right: -14px;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--bg-raised); color: var(--fg);
+    border: 1px solid var(--border-hi); cursor: pointer; font-size: 19px;
+    line-height: 1; display: grid; place-items: center;
+  }
+
+  /* --- Footer ---------------------------------------------------------- */
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0 60px; color: var(--fg-faint); font-size: 14px;
+  }
+
+  footer p { margin: 0 0 8px; }
+  footer a { color: var(--fg-muted); text-decoration: none; }
+  footer a:hover { color: var(--fg); }
+
+  @media (max-width: 640px) {
+    .hero { padding: 56px 0 44px; }
+    .bar nav a { padding: 7px 8px; font-size: 13px; }
+    .bar nav a.hide-sm { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <div class="brand"><span class="mark"></span> LocalCanvas AI</div>
+    <nav>
+      <a href="#idea">Idea</a>
+      <a href="#status" class="hide-sm">Status</a>
+      <a href="#product" class="hide-sm">Product</a>
+      <a href="#engineering" class="hide-sm">Engineering</a>
+      <a class="btn btn-ghost" style="padding:7px 13px;font-size:13.5px" href="https://github.com/ulasmango-cmd/localcanvas-ai">GitHub</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle colour theme" title="Toggle colour theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <div class="wrap hero">
+    <span class="pill"><span class="dot"></span> Phase 3 of 11 &middot; foundation, identity and storage verified</span>
+    <h1>Photo editing that never uploads your photos anywhere.</h1>
+    <p class="lede">
+      A self-hosted editing platform for people who cannot send their images to
+      somebody else's server. Edit, detect and rewrite text inside images, remove
+      objects, and manage client work — with the AI running on your own hardware.
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#product">See the product &rarr;</a>
+      <a class="btn btn-ghost" href="https://github.com/ulasmango-cmd/localcanvas-ai">Read the case study</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="banner">
+      <span class="icon">&#9888;</span>
+      <p>
+        <strong>Being direct about what this is.</strong> The foundation, the
+        identity system and the project-and-storage layer are built and verified.
+        <strong>The editor itself is not written yet</strong> — it is Phase&nbsp;4.
+        Everything below is labelled with what actually exists, and the screenshots
+        are real pages from the running stack rather than mockups.
+      </p>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <section id="idea">
+    <div class="wrap">
+      <p class="eyebrow">The problem</p>
+      <h2>Every AI photo editor asks you to trust somebody else</h2>
+      <div class="prose">
+        <p>
+          The AI features people actually want — removing an object, reading the
+          text baked into a photograph, replacing it — all require sending your
+          image to a server you do not own. For a lot of people that is a
+          deal-breaker: law firms, clinics, agencies under NDA, anyone handling
+          client material, anyone in a jurisdiction with data-residency rules.
+        </p>
+        <p>
+          LocalCanvas AI runs entirely on your own machine, in Docker. Your files,
+          your prompts and your project data are not transmitted anywhere. There is
+          no cloud AI provider in the default path.
+        </p>
+        <p>
+          The differentiator is <strong>text inside images</strong>. Not OCR that
+          merely reads it — the ability to detect text in a photograph, then
+          correct it, redact it, remove it or replace it, non-destructively. That is
+          a job people currently do badly in Photoshop and would rather not do at all.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <section id="status">
+    <div class="wrap">
+      <p class="eyebrow">Status</p>
+      <h2>What works today</h2>
+      <p>Three phases of eleven are built and verified. The remaining work is stated as plainly as the finished work.</p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Layer</th><th>State</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Monorepo, strict TypeScript, lint, hooks, CI</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>PostgreSQL schema, migrations, deterministic seed</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Typed configuration with production guards</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Fastify API: redaction, security headers, rate limiting, OpenAPI</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Authorization: 27 permissions, 8 roles, enforced server-side</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Identity: sessions, lockout, password reset, privilege epochs</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Multi-tenant isolation — proven, not asserted</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Projects: CRUD, revisions, trash and restore, pagination</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Storage: direct-to-MinIO uploads via presigned URLs</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Byte-level image validation and decompression-bomb defence</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Web application: auth, workspace, members, projects, upload panel</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Python AI worker with a capability registry</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td><strong>The photo editor</strong></td><td><span class="tag tag-none">Phase 4</span></td></tr>
+            <tr><td><strong>OCRed, editable text inside images</strong></td><td><span class="tag tag-none">Phase 5</span></td></tr>
+            <tr><td><strong>Object removal</strong></td><td><span class="tag tag-warn">Blocked on a licence question</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <section id="product">
+    <div class="wrap">
+      <p class="eyebrow">The product</p>
+      <h2>Real pages, real data, running locally</h2>
+      <p>
+        Captured by a scripted browser session against a live Docker stack. The
+        asset thumbnails are streamed from the object store through presigned URLs,
+        so this is the product serving its own data — not a design mockup.
+      </p>
+
+      <figure>
+        <img class="shot" src="screenshots/06-projects.png" alt="The project index, listing two projects with their asset and revision counts." loading="lazy">
+        <figcaption>
+          <strong>The project index.</strong> Each card carries its own asset and
+          revision counts. Revision counts matter because nothing in this product
+          overwrites an original — the count is a promise the interface keeps.
+        </figcaption>
+      </figure>
+
+      <figure>
+        <img class="shot" src="screenshots/07-project-detail.png" alt="Project detail showing five uploaded images with their dimensions, plus an upload panel." loading="lazy">
+        <figcaption>
+          <strong>The heart of Phase 3.</strong> Five real PNG files that went
+          through the presigned direct-upload path: the API minted the URL, the
+          browser put the bytes straight into object storage, and the API then read
+          them back and identified the format from the bytes themselves. The
+          dimensions under each thumbnail — <code>360&nbsp;&times;&nbsp;640</code>,
+          <code>512&nbsp;&times;&nbsp;512</code>, <code>720&nbsp;&times;&nbsp;360</code>
+          — were parsed out of the PNG headers server-side. The client never
+          supplied them, and would not be believed if it had.
+        </figcaption>
+      </figure>
+
+      <div class="grid-2">
+        <figure>
+          <img class="shot" src="screenshots/08-members.png" alt="The members page listing users with role selectors and an invitation panel." loading="lazy">
+          <figcaption>
+            <strong>Members.</strong> Eight roles, each with a permission set
+            enforced on the server. Changing a role bumps a privilege epoch, which
+            kills that user's existing sessions immediately rather than at their
+            next natural expiry.
+          </figcaption>
+        </figure>
+
+        <figure>
+          <img class="shot" src="screenshots/01-landing.png" alt="The landing page, headlined 'Photo editing that never uploads your photos anywhere.'" loading="lazy">
+          <figcaption>
+            <strong>The landing page.</strong> The privacy claim is the headline
+            rather than a footnote, because it is the reason the product exists.
+          </figcaption>
+        </figure>
+      </div>
+
+      <figure>
+        <img class="shot" src="screenshots/04-status.png" alt="The installation health page, reporting live latencies for reachable dependencies and clearly marking two that are not configured." loading="lazy">
+        <figcaption>
+          <strong>The screenshot worth reading carefully.</strong> This is the
+          application auditing its own honesty. It reports live latencies for every
+          dependency it can reach — PostgreSQL at 1.88&nbsp;ms, Redis at
+          10.49&nbsp;ms, object storage at 13.97&nbsp;ms — and just as plainly reports
+          the two it cannot: the local model host and the AI worker are
+          <code>Not&nbsp;configured</code>, and the overall state is
+          <code>Running&nbsp;with&nbsp;reduced&nbsp;capability</code>. An application
+          that says so in public is why the "not started" rows above can be believed.
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <section id="architecture">
+    <div class="wrap">
+      <p class="eyebrow">Architecture</p>
+      <h2>A modular monolith with a hard boundary around the models</h2>
+
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+    Browser[Browser] -->|HTTP| Web[Next.js 16 web app]
+    Web -->|"server-side fetch,<br/>session in an httpOnly cookie"| API[Fastify API]
+    API --> DB[(PostgreSQL 18)]
+    API --> Redis[(Redis)]
+    API --> MinIO[(MinIO / S3)]
+    API --> Worker[Python AI worker]
+    Worker --> Ollama[Ollama]
+
+    Browser -.->|"presigned PUT / GET<br/>image bytes bypass the API"| MinIO
+        </pre>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <span class="num">WEB</span>
+          <h3>Holds no business rules</h3>
+          <p>The web app talks only to the API. Authorization, validation and every state transition live behind it, so a second client cannot bypass them.</p>
+        </div>
+        <div class="card">
+          <span class="num">API</span>
+          <h3>Owns every state transition</h3>
+          <p>Fastify with zod-validated contracts shared across runtimes, so a contract change is a compile-time error rather than a runtime surprise.</p>
+        </div>
+        <div class="card">
+          <span class="num">WORKER</span>
+          <h3>Never exposed to the browser</h3>
+          <p>Runs inference and requires a shared secret on every request. Its HTTP client is explicitly configured not to honour <code>HTTP_PROXY</code>.</p>
+        </div>
+        <div class="card">
+          <span class="num">STORAGE</span>
+          <h3>Bytes never transit the API</h3>
+          <p>The API mints presigned URLs; the browser uploads directly. Large uploads stay off the application server's heap without giving up server-side validation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <section id="engineering">
+    <div class="wrap">
+      <p class="eyebrow">Engineering</p>
+      <h2>The parts that were harder than they look</h2>
+
+      <div class="cards">
+        <div class="card">
+          <span class="num">01</span>
+          <h3>Privacy enforced by architecture, not policy</h3>
+          <p>
+            The worker's HTTP client is explicitly configured not to honour
+            <code>HTTP_PROXY</code> — an ambient proxy would otherwise route a
+            request intended for loopback Ollama off the machine. A real bug, found
+            by a test, and exactly the kind of thing a "nothing leaves this machine"
+            claim dies from.
+          </p>
+        </div>
+
+        <div class="card">
+          <span class="num">02</span>
+          <h3>Images validated by reading their bytes</h3>
+          <p>
+            Not by trusting <code>Content-Type</code>. PNG, JPEG, GIF, WebP, BMP,
+            AVIF, HEIC, TIFF and SVG are identified from their magic numbers, and
+            dimensions come from the headers. A file claiming to be a PNG and
+            containing HTML is rejected with a readable reason.
+          </p>
+        </div>
+
+        <div class="card">
+          <span class="num">03</span>
+          <h3>Bombs refused before allocation</h3>
+          <p>
+            Validation is header-only, with per-side and total-pixel ceilings, so a
+            file declaring <code>50000&nbsp;&times;&nbsp;50000</code> is rejected
+            without anything being allocated for it.
+          </p>
+        </div>
+
+        <div class="card">
+          <span class="num">04</span>
+          <h3>Tenant isolation proven, not asserted</h3>
+          <p>
+            Every workspace-scoped endpoint has a cross-tenant denial case, and
+            foreign-workspace responses are asserted
+            <strong>byte-identical</strong> to not-found responses. The API cannot
+            be used as an existence oracle. Revoking another user's session returns
+            404, not 403.
+          </p>
+        </div>
+
+        <div class="card">
+          <span class="num">05</span>
+          <h3>Object keys scoped as a security control</h3>
+          <p>
+            Keys are <code>ws/&lt;workspaceId&gt;/...</code>, so a presigned URL
+            minted for one tenant cannot address another tenant's object even if the
+            key were guessed. There is a function that asserts exactly that.
+          </p>
+        </div>
+
+        <div class="card">
+          <span class="num">06</span>
+          <h3>Bugs only the real dependency could find</h3>
+          <p>
+            The integration suite ran green against a fake storage layer, and then a
+            real MinIO run surfaced problems the fake could not: a rejected upload
+            left its bytes in the bucket, and downloads served the client's
+            <em>declared</em> content type rather than the detected one. The fake
+            proves the wiring; the real run proves the behaviour.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <section id="honesty">
+    <div class="wrap">
+      <p class="eyebrow">Limitations</p>
+      <h2>What this does not do yet</h2>
+      <p>
+        A portfolio page that only lists strengths is a sales page. These are the
+        real gaps, including one that is blocked on a legal question rather than an
+        engineering one.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Limitation</th><th>Why</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>No photo editor yet</td><td>Scheduled as Phase 4; the storage and revision layer it needs is already built</td></tr>
+            <tr><td>No text detection or editing inside images yet</td><td>Phase 5 — the differentiator, and deliberately not started before the editor exists</td></tr>
+            <tr><td>Object removal is blocked</td><td>
+              The inpainting weights it depends on carry <strong>no licence
+              statement</strong> and are widely reported as non-commercial. Rather
+              than ship it and hope, the adapter is registered as permanently
+              blocked in the worker's capability registry, the reason is surfaced to
+              the operator, and a test asserts it can never report as available.
+            </td></tr>
+            <tr><td>Two-factor authentication is not shipped</td><td>Blocked on sequencing, not on difficulty</td></tr>
+            <tr><td>The project licence is undecided</td><td>An owner decision still open</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================ -->
+  <section id="stack">
+    <div class="wrap">
+      <p class="eyebrow">Technology</p>
+      <h2>What it is built from</h2>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Layer</th><th>Stack</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Web</td><td>Next.js 16 (App Router, Turbopack), React 19, TypeScript 6</td></tr>
+            <tr><td>API</td><td>Fastify 5 with zod-validated contracts</td></tr>
+            <tr><td>Data</td><td>PostgreSQL 18 with Prisma 7</td></tr>
+            <tr><td>Cache and queues</td><td>Redis</td></tr>
+            <tr><td>Object storage</td><td>MinIO (S3-compatible), presigned direct uploads</td></tr>
+            <tr><td>AI worker</td><td>Python, FastAPI, Ollama</td></tr>
+            <tr><td>Auth</td><td>Argon2id, server-side sessions, privilege epochs, server-enforced RBAC</td></tr>
+            <tr><td>Testing</td><td>Vitest, pytest, a custom runtime HTTP harness</td></tr>
+            <tr><td>CI</td><td>GitHub Actions — lint, typecheck, tests, build, compose validation, licence scan</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong style="color:var(--fg-muted)">LocalCanvas AI</strong> — a portfolio case study. The implementation is private and proprietary.</p>
+    <p>This page contains product documentation and screenshots only. No application source, infrastructure configuration or credentials are published here.</p>
+    <p style="margin-top:14px">
+      <a href="https://github.com/ulasmango-cmd/localcanvas-ai">Repository</a> &nbsp;·&nbsp;
+      <a href="https://github.com/ulasmango-cmd">GitHub profile</a>
+    </p>
+    <p style="margin-top:14px">&copy; Altin. All rights reserved.</p>
+  </div>
+</footer>
+
+<dialog class="lightbox" id="lightbox">
+  <button aria-label="Close">&times;</button>
+  <!-- No `src` until something is opened: an <img> with no source requests the
+       current document, which shows up as a broken image in audits and consoles. -->
+  <img alt="" hidden>
+</dialog>
+
+<script>
+  // --- Theme ---------------------------------------------------------------
+  // Defaults to dark, because the product is dark.
+  //
+  // Precedence: an explicit `?theme=` wins on *first* load, a stored choice wins
+  // after that, and the default is dark. The distinction matters because a saved
+  // preference must beat a link someone shared six months ago — otherwise the
+  // toggle looks broken, since every navigation re-applies the URL and snaps the
+  // theme back.
+
+  (function () {
+    var root = document.documentElement;
+    var forced = new URLSearchParams(location.search).get('theme');
+
+    var saved = null;
+    try { saved = localStorage.getItem('lc-theme'); } catch (e) {}
+
+    function valid(value) { return value === 'light' || value === 'dark'; }
+
+    if (valid(saved)) root.setAttribute('data-theme', saved);
+    else if (valid(forced)) root.setAttribute('data-theme', forced);
+
+    document.getElementById('themeToggle').addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('lc-theme', next); } catch (e) {}
+      rethemeDiagram();
+    });
+  })();
+
+  // --- Lightbox ------------------------------------------------------------
+  // Clicking any screenshot opens it full size. A native <dialog> is used so
+  // focus trapping and Escape-to-close come from the browser rather than from
+  // hand-rolled key handling.
+
+  (function () {
+    var dialog = document.getElementById('lightbox');
+    var image = dialog.querySelector('img');
+
+    document.querySelectorAll('.shot').forEach(function (shot) {
+      shot.addEventListener('click', function () {
+        image.src = shot.src;
+        image.alt = shot.alt;
+        image.hidden = false;
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else window.open(shot.src, '_blank');
+      });
+    });
+
+    dialog.addEventListener('click', function (event) {
+      // Clicks that land on the backdrop (i.e. outside the image) close it.
+      if (event.target === dialog || event.target.tagName === 'BUTTON') dialog.close();
+    });
+  })();
+
+  // --- Mermaid -------------------------------------------------------------
+  // Loaded lazily and permitted to fail: if the CDN is unreachable the diagram
+  // degrades to its own source text, which is still readable, rather than
+  // leaving a blank box on the page.
+
+  function diagramTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'default' : 'dark';
+  }
+
+  function rethemeDiagram() {
+    var holder = document.querySelector('.diagram');
+    if (holder && holder.dataset.source) {
+      holder.innerHTML = '<pre class="mermaid">' + holder.dataset.source + '</pre>';
+      renderDiagram();
+    }
+  }
+
+  function renderDiagram() {
+    if (typeof mermaid === 'undefined') return;
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: diagramTheme(),
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      flowchart: { curve: 'basis', padding: 14 }
+    });
+    mermaid.run({ querySelector: '.mermaid' });
+  }
+
+  (function () {
+    var holder = document.querySelector('.diagram');
+    var pre = holder.querySelector('.mermaid');
+    if (pre) holder.dataset.source = pre.textContent.trim();
+
+    var script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+    script.onload = renderDiagram;
+    script.onerror = function () { /* the source text remains as the fallback */ };
+    document.head.appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
