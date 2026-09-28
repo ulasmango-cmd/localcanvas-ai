@@ -4,7 +4,7 @@
 
 **A privacy-first, self-hosted AI photo editor** — edit images, rewrite the text inside them, remove objects and run a client workflow, with the AI on your own hardware.
 
-[![Status](https://img.shields.io/badge/status-phase_4_of_11-blue?style=for-the-badge)](#project-status)
+[![Status](https://img.shields.io/badge/status-phase_5_of_11-blue?style=for-the-badge)](#project-status)
 [![Local AI](https://img.shields.io/badge/AI-local_&_offline-6f42c1?style=for-the-badge)](#local-ai)
 [![Source](https://img.shields.io/badge/source-private-lightgrey?style=for-the-badge)](#ownership)
 
@@ -28,7 +28,11 @@ The differentiator is **text inside images**. Not just OCR that reads it — the
 
 ## Where it stands
 
-**Phase 4 of 11.** The foundation, identity and tenancy, the project and storage layers, and **the editor itself** are built and verified. The editor is the product, and it now works end to end: import an image, edit it non-destructively, reload the page and get your work back, save and restore revisions, and export — with the original file byte-identical throughout.
+**Phase 5 of 11.** The foundation, identity and tenancy, the project and storage layers, the editor, and **text detection inside images** are built and verified.
+
+The editor works end to end: import an image, edit it non-destructively, reload the page and get your work back, save and restore revisions, and export — with the original file byte-identical throughout. On top of that, it now reads the text baked into a photograph, shows you where it is unsure, lets you correct it, and replaces it with real, editable text.
+
+**One thing is blocked, and the product says so rather than hiding it.** Removing text needs inpainting weights whose licence permits distribution. The mask that removal would consume is built and verified; the step that consumes it is not available, and the interface states why.
 
 Being direct about this is deliberate. This page describes what exists, not what is planned, and the line between the two is marked everywhere.
 
@@ -49,8 +53,8 @@ Being direct about this is deliberate. This page describes what exists, not what
 | Web: auth, workspace, members, projects, upload panel | Working |
 | Python AI worker with a capability registry | Working |
 | **The photo editor: canvas, layers, adjustments, history, export** | **Working** |
-| **OCRed, editable text inside images** | **Not started — Phase 5** |
-| **Object removal** | **Blocked — see below** |
+| **Text detection, review, correction and replacement** | **Working** |
+| **Object and text removal** | **Blocked — see below** |
 
 ---
 
@@ -107,6 +111,38 @@ between a screenshot and a claim:
 **Members.** All eight roles, with role changes enforced server-side.
 
 ![Members](screenshots/08-members.png)
+
+### Text inside images
+
+**This is the feature the product exists for.** Not OCR that merely reads text —
+the ability to find it, show you where it is uncertain, let you fix it, and
+replace it with real editable text.
+
+![Text detection in the editor](screenshots/10-text-in-image.png)
+
+What is happening in that screenshot, and why each part matters:
+
+- **The boxes on the canvas** are the detected text, drawn as an overlay. They are
+  not part of the document — they cannot inherit a blend mode, and they are
+  omitted from an export.
+- **`87% confident`** is shown on every line, because OCR does not fail loudly. It
+  returns a confident-looking string that is simply wrong. The line it read as
+  `S Al` came back at **57%** — that is the signal, and the panel puts it where a
+  person will look.
+- **`edited`** marks a line the user changed. The count of corrections is the
+  honest measure of how much the output could be trusted.
+- **The replacement layer** is real text in the document, carrying the id of the
+  OCR job that produced it and a flag admitting the font is an estimate. The
+  original typeface was never recovered, and presenting a substitute as the
+  original would be a quiet lie.
+- **`Removal is unavailable`** is stated with its real reason. Removing text needs
+  inpainting weights whose licence permits distribution, and that is unresolved.
+  The mask removal would consume *is* built and verified — it is pure geometry —
+  so the blocked step has exactly one dependency left.
+
+The whole thing runs on your machine. Text detection is RapidOCR, running PP-OCR
+on ONNX Runtime: no cloud call, no training framework, and Apache-2.0 including
+the bundled weights.
 
 ### The honest one
 
@@ -213,7 +249,7 @@ Local models via Ollama, on your hardware, with no external calls:
 | :--- | :--- |
 | Chat and editing intent | `qwen3:4b` |
 | Vision and captioning | `qwen3-vl:4b` |
-| Text detection in images | Lightweight ONNX detector (planned, Phase 5) |
+| Text detection and reading | RapidOCR — PP-OCR on ONNX Runtime, Apache-2.0 |
 
 **Honest note on object removal.** The inpainting weights this feature depends on carry **no licence statement** and are widely reported as non-commercial. Rather than ship it and hope, the adapter is registered as *permanently blocked* in the worker's capability registry, the reason is surfaced to the operator, and a test asserts it can never report as available. The headline feature is genuinely gated on a legal question, and that is stated rather than hidden.
 
@@ -261,11 +297,11 @@ infra/          Docker, CI helpers, verification scripts
 
 ## Project status
 
-**Active development, Phase 4 of 11.**
+**Active development, Phase 5 of 11.**
 
-Phases 1–4 are built and verified: foundation, identity and tenancy, the project
-and storage layer, and the editor. The text-in-image pipeline (Phase 5) and the
-AI job system (Phase 6) are ahead.
+Phases 1–5 are built and verified: foundation, identity and tenancy, the project
+and storage layer, the editor, and the text-in-image pipeline. The AI job system
+and chat editing (Phase 6) are ahead.
 
 A full phase-by-phase ledger with `Not started` / `Blocked` / `Implemented` /
 `Tested` / `Accepted` labels lives in `docs/IMPLEMENTATION_STATUS.md`. Nothing is
@@ -280,10 +316,12 @@ Real limitations, stated plainly:
 
 | Limitation | Status |
 | :--- | :--- |
+| **Text removal is unavailable — blocked on a model-weight licence** | **Blocked** |
+| OCR jobs run synchronously, with no queue or progress stream | Phase 6 |
+| Detection boxes are drawn but not click-to-select on the canvas | Phase 5 follow-up |
 | Text is edited in the inspector, not directly on the canvas | Phase 4 follow-up |
 | Canvas rotation does not recompose off-centre layer pivots | Phase 4 follow-up |
 | No freehand brush tool in the UI, though the document supports it | Phase 4 follow-up |
-| No text detection or editing in images yet | Phase 5 |
 | Object removal blocked on a model-weight licence | Blocked |
 | Two-factor authentication not shipped | Blocked on sequencing |
 | Licence not yet chosen | Owner decision |

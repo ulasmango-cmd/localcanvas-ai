@@ -15,3 +15,4 @@ Every image is a real page from the running application.
 | `07-project-detail.png` | `/app/acme-studio/projects/summer-campaign` | Project detail: asset grid, upload panel and trash/restore controls. |
 | `08-members.png` | `/app/acme-studio/members` | Member management, role changes and the invitation flow. |
 | `09-editor.png` | `/app/acme-studio/projects/summer-campaign/editor` | The editor: canvas, layers, adjustments and the revision panel. |
+| `10-text-in-image.png` | `/app/acme-studio/projects/summer-campaign/editor` | Text detection: boxes on the canvas, per-line confidence, and a replacement layer. |
