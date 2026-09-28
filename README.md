@@ -251,7 +251,15 @@ Local models via Ollama, on your hardware, with no external calls:
 | Vision and captioning | `qwen3-vl:4b` |
 | Text detection and reading | RapidOCR — PP-OCR on ONNX Runtime, Apache-2.0 |
 
-**Honest note on object removal.** The inpainting weights this feature depends on carry **no licence statement** and are widely reported as non-commercial. Rather than ship it and hope, the adapter is registered as *permanently blocked* in the worker's capability registry, the reason is surfaced to the operator, and a test asserts it can never report as available. The headline feature is genuinely gated on a legal question, and that is stated rather than hidden.
+**Honest note on removal.** The inpainting weights this depends on carry **no licence statement** and are widely reported as non-commercial. Rather than ship it and hope, the adapter is registered as *permanently blocked* in the worker's capability registry, and the reason reaches the interface — the editor prints it beside the disabled Remove button instead of leaving a control that does nothing.
+
+What Phase 5 built around that block:
+
+- **Detection, review, correction and replacement are complete and verified.**
+- **The mask removal would consume is built and verified.** It is pure geometry — no model, no weights, no licence question — so the blocked step has exactly one dependency left.
+- **The capability report distinguishes "blocked" from "not installed"**, so the editor says "this is a licence decision" rather than telling you to install a package the product has deliberately refused to use.
+
+Removal is genuinely gated on a legal question, and that is stated rather than hidden. It is a decision, not remaining work: obtain a licence, train on permissive data, or choose a different inpainting model.
 
 ---
 

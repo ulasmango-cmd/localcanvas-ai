@@ -685,16 +685,25 @@ flowchart LR
           <tbody>
             <tr><td>Text is edited in the inspector, not on the canvas</td><td>Phase 4 follow-up &mdash; the document model already supports it</td></tr>
             <tr><td>No freehand brush tool in the UI</td><td>Phase 4 follow-up &mdash; the shape schema supports freehand paths already</td></tr>
-            <tr><td><strong>Text removal is unavailable</strong></td><td>Blocked on a model-weight licence. The mask removal would consume is built and verified &mdash; it is pure geometry &mdash; so only the step that consumes it is missing, and the interface states that rather than hiding the button.</td></tr>
-            <tr><td>OCR jobs run synchronously, with no queue</td><td>Phase 6</td></tr>
-            <tr><td>Detection boxes are drawn but not click-to-select</td><td>Phase 5 follow-up</td></tr>
-            <tr><td>Object removal is blocked</td><td>
+            <tr><td><strong>Object and text removal is unavailable</strong></td><td>
               The inpainting weights it depends on carry <strong>no licence
               statement</strong> and are widely reported as non-commercial. Rather
               than ship it and hope, the adapter is registered as permanently
-              blocked in the worker's capability registry, the reason is surfaced to
-              the operator, and a test asserts it can never report as available.
+              blocked in the worker's capability registry, and the reason reaches
+              the interface &mdash; the editor prints it beside the disabled Remove
+              button instead of leaving a control that does nothing.
+              <br><br>
+              What was built around the block: detection, review, correction and
+              replacement are complete and verified, and <strong>the mask removal
+              would consume is built and verified too</strong> &mdash; it is pure
+              geometry, with no model and no licence question, so the blocked step
+              has exactly one dependency left. The capability report also
+              distinguishes "blocked" from "not installed", so the editor never
+              tells you to install a package the product has deliberately refused
+              to use.
             </td></tr>
+            <tr><td>OCR jobs run synchronously, with no queue or progress stream</td><td>Phase 6</td></tr>
+            <tr><td>Detection boxes are drawn but not click-to-select</td><td>Phase 5 follow-up</td></tr>
             <tr><td>Two-factor authentication is not shipped</td><td>Blocked on sequencing, not on difficulty</td></tr>
             <tr><td>The project licence is undecided</td><td>An owner decision still open</td></tr>
           </tbody>
