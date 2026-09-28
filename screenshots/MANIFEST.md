@@ -5,6 +5,7 @@ Every image is a real page from the running application.
 
 | File | Route | Shows |
 | ---- | ----- | ----- |
+
 | `01-landing.png` | `/` | The marketing landing page. |
 | `02-login.png` | `/login` | Sign-in form. |
 | `03-register.png` | `/register` | Account registration, including workspace creation. |
@@ -13,3 +14,4 @@ Every image is a real page from the running application.
 | `06-projects.png` | `/app/acme-studio/projects` | Project index with pagination and trash entry points. |
 | `07-project-detail.png` | `/app/acme-studio/projects/summer-campaign` | Project detail: asset grid, upload panel and trash/restore controls. |
 | `08-members.png` | `/app/acme-studio/members` | Member management, role changes and the invitation flow. |
+| `09-editor.png` | `/app/acme-studio/projects/summer-campaign/editor` | The editor: canvas, layers, adjustments and the revision panel. |

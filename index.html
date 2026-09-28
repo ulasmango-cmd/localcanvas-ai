@@ -339,7 +339,7 @@
 <main>
 
   <div class="wrap hero">
-    <span class="pill"><span class="dot"></span> Phase 3 of 11 &middot; foundation, identity and storage verified</span>
+    <span class="pill"><span class="dot"></span> Phase 4 of 11 &middot; the editor is built and verified</span>
     <h1>Photo editing that never uploads your photos anywhere.</h1>
     <p class="lede">
       A self-hosted editing platform for people who cannot send their images to
@@ -357,10 +357,15 @@
       <span class="icon">&#9888;</span>
       <p>
         <strong>Being direct about what this is.</strong> The foundation, the
-        identity system and the project-and-storage layer are built and verified.
-        <strong>The editor itself is not written yet</strong> — it is Phase&nbsp;4.
-        Everything below is labelled with what actually exists, and the screenshots
-        are real pages from the running stack rather than mockups.
+        identity system, the project-and-storage layer and
+        <strong>the editor itself</strong> are built and verified. The editor's
+        gate — import, edit, reload the page, restore your work, and export,
+        without the original ever being altered — is checked by a scripted browser
+        session that hashes the stored file before and after.
+        <strong>What is not built yet is the text-in-image pipeline</strong>
+        (Phase&nbsp;5), which is the feature this product is really differentiated
+        by. Everything below is labelled with what actually exists, and the
+        screenshots are real pages from the running stack rather than mockups.
       </p>
     </div>
   </div>
@@ -414,11 +419,11 @@
             <tr><td>Identity: sessions, lockout, password reset, privilege epochs</td><td><span class="tag tag-ok">Working</span></td></tr>
             <tr><td>Multi-tenant isolation — proven, not asserted</td><td><span class="tag tag-ok">Working</span></td></tr>
             <tr><td>Projects: CRUD, revisions, trash and restore, pagination</td><td><span class="tag tag-ok">Working</span></td></tr>
-            <tr><td>Storage: direct-to-MinIO uploads via presigned URLs</td><td><span class="tag tag-ok">Working</span></td></tr>
+            <tr><td>Storage: direct-to-object-store uploads via presigned URLs</td><td><span class="tag tag-ok">Working</span></td></tr>
             <tr><td>Byte-level image validation and decompression-bomb defence</td><td><span class="tag tag-ok">Working</span></td></tr>
             <tr><td>Web application: auth, workspace, members, projects, upload panel</td><td><span class="tag tag-ok">Working</span></td></tr>
             <tr><td>Python AI worker with a capability registry</td><td><span class="tag tag-ok">Working</span></td></tr>
-            <tr><td><strong>The photo editor</strong></td><td><span class="tag tag-none">Phase 4</span></td></tr>
+            <tr><td><strong>The photo editor: canvas, layers, adjustments, history, export</strong></td><td><span class="tag tag-ok">Working</span></td></tr>
             <tr><td><strong>OCRed, editable text inside images</strong></td><td><span class="tag tag-none">Phase 5</span></td></tr>
             <tr><td><strong>Object removal</strong></td><td><span class="tag tag-warn">Blocked on a licence question</span></td></tr>
           </tbody>
@@ -437,6 +442,22 @@
         asset thumbnails are streamed from the object store through presigned URLs,
         so this is the product serving its own data — not a design mockup.
       </p>
+
+      <figure>
+        <img class="shot" src="screenshots/09-editor.png" alt="The editor: a canvas with an image and text, a three-layer stack, adjustment sliders set to non-neutral values, and a saved revision." loading="lazy">
+        <figcaption>
+          <strong>The editor — this is the product.</strong> A canvas, a layer
+          stack, non-destructive adjustments, undo/redo, autosaved drafts and a
+          revision history, all running locally. The composition was built by a
+          scripted browser session rather than staged by hand: it imported an
+          image, added a text layer, added an adjustment layer, moved the contrast
+          and saturation sliders, and saved a revision. You can see the
+          non-neutral slider values and the canvas reflecting them. The image
+          itself is fetched by the browser straight from object storage through a
+          presigned URL — the API never proxies image bytes, and nothing here
+          modifies the original file.
+        </figcaption>
+      </figure>
 
       <figure>
         <img class="shot" src="screenshots/06-projects.png" alt="The project index, listing two projects with their asset and revision counts." loading="lazy">
@@ -510,11 +531,11 @@ flowchart LR
     Web -->|"server-side fetch,<br/>session in an httpOnly cookie"| API[Fastify API]
     API --> DB[(PostgreSQL 18)]
     API --> Redis[(Redis)]
-    API --> MinIO[(MinIO / S3)]
+    API --> Store[(SeaweedFS / S3)]
     API --> Worker[Python AI worker]
     Worker --> Ollama[Ollama]
 
-    Browser -.->|"presigned PUT / GET<br/>image bytes bypass the API"| MinIO
+    Browser -.->|"presigned PUT / GET<br/>image bytes bypass the API"| Store
         </pre>
       </div>
 
@@ -637,7 +658,8 @@ flowchart LR
             <tr><th>Limitation</th><th>Why</th></tr>
           </thead>
           <tbody>
-            <tr><td>No photo editor yet</td><td>Scheduled as Phase 4; the storage and revision layer it needs is already built</td></tr>
+            <tr><td>Text is edited in the inspector, not on the canvas</td><td>Phase 4 follow-up &mdash; the document model already supports it</td></tr>
+            <tr><td>No freehand brush tool in the UI</td><td>Phase 4 follow-up &mdash; the shape schema supports freehand paths already</td></tr>
             <tr><td>No text detection or editing inside images yet</td><td>Phase 5 — the differentiator, and deliberately not started before the editor exists</td></tr>
             <tr><td>Object removal is blocked</td><td>
               The inpainting weights it depends on carry <strong>no licence
@@ -670,7 +692,7 @@ flowchart LR
             <tr><td>API</td><td>Fastify 5 with zod-validated contracts</td></tr>
             <tr><td>Data</td><td>PostgreSQL 18 with Prisma 7</td></tr>
             <tr><td>Cache and queues</td><td>Redis</td></tr>
-            <tr><td>Object storage</td><td>MinIO (S3-compatible), presigned direct uploads</td></tr>
+            <tr><td>Object storage</td><td>SeaweedFS (S3-compatible), presigned direct uploads</td></tr>
             <tr><td>AI worker</td><td>Python, FastAPI, Ollama</td></tr>
             <tr><td>Auth</td><td>Argon2id, server-side sessions, privilege epochs, server-enforced RBAC</td></tr>
             <tr><td>Testing</td><td>Vitest, pytest, a custom runtime HTTP harness</td></tr>

@@ -4,7 +4,7 @@
 
 **A privacy-first, self-hosted AI photo editor** — edit images, rewrite the text inside them, remove objects and run a client workflow, with the AI on your own hardware.
 
-[![Status](https://img.shields.io/badge/status-phase_3_of_11-blue?style=for-the-badge)](#project-status)
+[![Status](https://img.shields.io/badge/status-phase_4_of_11-blue?style=for-the-badge)](#project-status)
 [![Local AI](https://img.shields.io/badge/AI-local_&_offline-6f42c1?style=for-the-badge)](#local-ai)
 [![Source](https://img.shields.io/badge/source-private-lightgrey?style=for-the-badge)](#ownership)
 
@@ -28,7 +28,7 @@ The differentiator is **text inside images**. Not just OCR that reads it — the
 
 ## Where it stands
 
-**Phase 3 of 11.** The foundation, identity and tenancy, and the project and storage layers are built and verified. **The editor itself is not written yet** — it is Phase 4 and it is the next thing to be built.
+**Phase 4 of 11.** The foundation, identity and tenancy, the project and storage layers, and **the editor itself** are built and verified. The editor is the product, and it now works end to end: import an image, edit it non-destructively, reload the page and get your work back, save and restore revisions, and export — with the original file byte-identical throughout.
 
 Being direct about this is deliberate. This page describes what exists, not what is planned, and the line between the two is marked everywhere.
 
@@ -44,11 +44,11 @@ Being direct about this is deliberate. This page describes what exists, not what
 | Identity: sessions, lockout, password reset, privilege epochs | Working |
 | Multi-tenant isolation — proven, not asserted | Working |
 | Projects: CRUD, revisions, trash/restore, pagination | Working |
-| Storage: direct-to-MinIO uploads via presigned URLs | Working |
+| Storage: direct-to-object-store uploads via presigned URLs | Working |
 | Byte-level image validation and decompression-bomb defence | Working |
 | Web: auth, workspace, members, projects, upload panel | Working |
 | Python AI worker with a capability registry | Working |
-| **The photo editor** | **Not started — Phase 4** |
+| **The photo editor: canvas, layers, adjustments, history, export** | **Working** |
 | **OCRed, editable text inside images** | **Not started — Phase 5** |
 | **Object removal** | **Blocked — see below** |
 
@@ -80,6 +80,29 @@ the format from the bytes themselves. Note the dimensions under each thumbnail
 headers server-side, not supplied by the client.
 
 ![Project detail with assets](screenshots/07-project-detail.png)
+
+### The editor
+
+**This is the product.** A canvas, a layer stack, non-destructive adjustments,
+undo/redo, autosaved drafts and a revision history — all running locally.
+
+The composition in this screenshot was built by a scripted browser session, not
+staged by hand: it imported an image, added a text layer, added an adjustment
+layer, moved the contrast and saturation sliders, and saved a revision. The
+contrast and saturation values are visible on their sliders, and the canvas
+reflects them.
+
+![The editor](screenshots/09-editor.png)
+
+Two things about it are worth pointing out, because they are the difference
+between a screenshot and a claim:
+
+- **The image is loaded from object storage through a presigned URL**, fetched
+  directly by the browser. The API never proxies image bytes.
+- **Nothing here modifies the original.** The document stores a reference to the
+  asset, not a copy of it. The verification run that produced this image hashed
+  the stored file before and after the entire session — import, adjust, reload,
+  restore, export — and it came back byte-identical.
 
 **Members.** All eight roles, with role changes enforced server-side.
 
@@ -128,11 +151,11 @@ flowchart LR
     Web -->|"server-side fetch,<br/>session in an httpOnly cookie"| API[Fastify API]
     API --> DB[(PostgreSQL 18)]
     API --> Redis[(Redis)]
-    API --> MinIO[(MinIO / S3)]
+    API --> Store[(SeaweedFS / S3)]
     API --> Worker[Python AI worker]
     Worker --> Ollama[Ollama]
 
-    Browser -.->|"presigned PUT / GET<br/>image bytes bypass the API"| MinIO
+    Browser -.->|"presigned PUT / GET<br/>image bytes bypass the API"| Store
 ```
 
 A modular monolith with a separate AI worker and a hard boundary around the local models:
@@ -175,8 +198,10 @@ Shared packages carry types, configuration, permissions, storage contracts and t
 - **Making "nothing leaves this machine" verifiable.** A privacy claim is only worth what its enforcement is worth. That meant closing the proxy leak, pinning the model host, and adding a CI licence scan that fails the build if a copyleft dependency enters the shipped tree.
 - **Trusting nothing the client says.** Content type, filename and declared dimensions are all provisional until the bytes are read.
 - **Validating large uploads without holding them.** Header-range reads and presigning, so a 100 MB file is checked without ever being buffered.
-- **Keeping copyleft at arm's length.** MinIO is AGPL and libheif is LGPL. Both stay unmodified, isolated services behind a network boundary, with the reasoning recorded rather than assumed.
-- **Testing honestly.** A green build proves very little about a page. There is a runtime harness that issues real HTTP to every route and asserts each renders its own content rather than an error boundary — including a check that an API outage does **not** look to the user like a lost session.
+- **When a dependency disappears.** MinIO deleted its Docker Hub images, then gated the registry everyone had migrated to, and the last freely-pullable community build turned out to carry an unpatched CVSS 8.8 authentication bypass. The fix was only possible because the application talks S3 to a *configurable endpoint* rather than to MinIO specifically — swapping the object store was a compose edit, not a code change. That abstraction was a decision made long before it was needed.
+- **A bug that only a stricter implementation could expose.** Presigned upload URLs were signed with a checksum computed over an empty body, because the AWS SDK attaches one by default and a presigned request has no body at signing time. MinIO tolerated it; the replacement store did not, and neither would AWS S3. The whole browser upload path was relying on one vendor's leniency.
+- **Keeping copyleft at arm's length.** MinIO was AGPL and libheif is LGPL. Both stay unmodified, isolated services behind a network boundary, with the reasoning recorded rather than assumed. Replacing the object store also removed an AGPL dependency and a telemetry-by-default vendor from a privacy-first product.
+- **Testing honestly.** A green build proves very little about a page. There is a runtime harness that issues real HTTP to every route, and a browser-driven harness that reads canvas pixels, compares them across an undo, and hashes a stored file before and after an entire editing session. The check that mattered most was also the one that was hardest to fake.
 
 ---
 
@@ -202,7 +227,7 @@ Local models via Ollama, on your hardware, with no external calls:
 | **API** | Fastify 5 with zod-validated contracts |
 | **Data** | PostgreSQL 18 with Prisma 7 |
 | **Cache / queues** | Redis |
-| **Object storage** | MinIO (S3-compatible), presigned direct uploads |
+| **Object storage** | SeaweedFS (S3-compatible), presigned direct uploads |
 | **AI worker** | Python, FastAPI, Ollama |
 | **Auth** | Argon2id, server-side sessions, privilege epochs, server-enforced RBAC |
 | **Testing** | Vitest, pytest, a custom runtime HTTP harness |
@@ -224,7 +249,7 @@ packages/
   auth/         Argon2id, tokens, session primitives
   identity/     users, sessions, invitations, workerspaces
   projects/     project and asset services, upload policy, image detection
-  storage/      S3/MinIO client, presigning, object-key policy
+  storage/      S3 client, presigning, object-key policy
   audit/        audit vocabulary and writer
   database/     Prisma schema, migrations, tenant-scoped helpers, seed
   editor-core/  versioned editor document schema and migrations
@@ -236,21 +261,28 @@ infra/          Docker, CI helpers, verification scripts
 
 ## Project status
 
-**Active development, Phase 3 of 11.**
+**Active development, Phase 4 of 11.**
 
-Phases 1–3 are built and verified: foundation, identity and tenancy, and the
-project and storage layer. The editor (Phase 4), the text-in-image pipeline
-(Phase 5) and the AI job system (Phase 6) are ahead.
+Phases 1–4 are built and verified: foundation, identity and tenancy, the project
+and storage layer, and the editor. The text-in-image pipeline (Phase 5) and the
+AI job system (Phase 6) are ahead.
 
 A full phase-by-phase ledger with `Not started` / `Blocked` / `Implemented` /
 `Tested` / `Accepted` labels lives in `docs/IMPLEMENTATION_STATUS.md`. Nothing is
 marked `Accepted` on the strength of a build.
 
+The editor's gate — import, edit, reload the page, restore your work, and export,
+without the original ever being altered — is verified by a scripted browser
+session that hashes the stored file before and after. The transcript is in the
+status ledger.
+
 Real limitations, stated plainly:
 
 | Limitation | Status |
 | :--- | :--- |
-| No photo editor yet | Phase 4 |
+| Text is edited in the inspector, not directly on the canvas | Phase 4 follow-up |
+| Canvas rotation does not recompose off-centre layer pivots | Phase 4 follow-up |
+| No freehand brush tool in the UI, though the document supports it | Phase 4 follow-up |
 | No text detection or editing in images yet | Phase 5 |
 | Object removal blocked on a model-weight licence | Blocked |
 | Two-factor authentication not shipped | Blocked on sequencing |
